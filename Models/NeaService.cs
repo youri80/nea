@@ -11,16 +11,19 @@ namespace er_nea.Models
         }
 
         public List<Account> Balances { get; set; }
-        
+
 
         public void Calculate(DateTime navdate, IEnumerable<NeaItem> sellDateList)
         {
-            var neaDates = sellDateList.Where(n => n.SellNavDate <= navdate);
+            var neaDates = from w in sellDateList
+                           where w.SellNavDate <= navdate
+                           orderby w.SellNavDate
+                           select w;
 
             var res = CreateNeaResultList(navdate);
 
             //Durchlaufen der Verkaufstage chronologisch
-            foreach (var neadate in neaDates.OrderBy(n=> n.SellNavDate))
+            foreach (var neadate in neaDates)
             {
                 var pct = neadate.PrevShareParts / neadate.ShareParts;
 
@@ -28,19 +31,14 @@ namespace er_nea.Models
                     from n in Balances
                     where n.NavDate == neadate.PrevSellNavDate || n.NavDate == neadate.SellNavDate
                     group n by new { n.Accoutnumber, n.SubAccountNumber, n.NavDate } into g
-                    select new { g.Key.Accoutnumber, g.Key.SubAccountNumber , g.Key.NavDate, Balance = g.Sum(n => n.Balance) };
+                    select new { g.Key.Accoutnumber, g.Key.SubAccountNumber, g.Key.NavDate, Balance = g.Sum(n => n.Balance) } ;
 
-                Balances.Where(n => n.NavDate == neadate.PrevSellNavDate);
-
-                // Berechnen jedes Konto
-
-                foreach (var acc in tmpbalance)
+                // Berechne jedes Konto am Verkaufstag
+                foreach (var acc in tmpbalance.Where(n=> n.NavDate == neadate.SellNavDate ))
                 {
                     var tmpRes = res.FirstOrDefault(n => n.Accoutnumber == acc.Accoutnumber && n.SubAccountNumber == acc.SubAccountNumber);
   
                     var tmpPrev = tmpbalance.First(n => n.Accoutnumber == acc.Accoutnumber && n.SubAccountNumber == acc.SubAccountNumber && n.NavDate == neadate.PrevSellNavDate);
-                    var tmpSell = tmpbalance.First(n => n.Accoutnumber == acc.Accoutnumber && n.SubAccountNumber == acc.SubAccountNumber && n.NavDate == neadate.PrevSellNavDate);
-
 
                     tmpRes.Nea = (tmpPrev.Balance + tmpRes.NeaAcc) * pct; //prüfen
                     tmpRes.NeaAcc += tmpRes.Nea;
