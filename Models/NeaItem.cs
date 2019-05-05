@@ -16,8 +16,8 @@ namespace er_nea.Models
 
         public string Cls { get; set; }
 
-        public double ShareParts { get; set}
+        public double ShareParts { get; set; }
 
-        public double PrevShareParts { get; set}
+        public double PrevShareParts { get; set; }
     }
 }
